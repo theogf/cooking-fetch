@@ -93,12 +93,11 @@ pub fn fill_db(conn: &Mutex<Connection>) {
                         Ok(_) => (),
                         Err(_) => panic!("Failed to insert elements"),
                     };
-            // println!("{:?}", recipe);
         }
     } else {
         panic!("Could not parse the content as an array.");
     };
-    println!("Finished building the DB");
+    log::info!("Finished building the DB");
 }
 
 pub fn row_to_recipe(row: &Row) -> Result<Recipe, rusqlite::Error> {
@@ -213,7 +212,7 @@ pub fn fetch_or_build_image(recipe: Recipe) -> PathBuf {
             }
             Err(e) => panic!("Failed to run pdfimages: {}", e),
         };
-        println!("Fetching image {}", img_output);
+        log::debug!("Fetching image {}", img_output);
         PathBuf::from(img_output)
     } else {
         images_present.last().unwrap().to_path_buf()
