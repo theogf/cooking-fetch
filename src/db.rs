@@ -27,7 +27,7 @@ pub fn fill_db(conn: &Mutex<Connection>) {
         Err(e) => panic!("Failed to build the SQLite DB errored with {}", e),
     };
 
-    let csv_file = Path::new("index.json");
+    let csv_file = Path::new("assets/index.json");
 
     let json_str = match fs::read_to_string(csv_file) {
         Ok(content) => content,
