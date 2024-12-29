@@ -127,13 +127,15 @@ async fn send_random_recipe(
         }
     };
 
+    let text_end = "\n\n/accept to get the pdf\n/next for another recipe";
     if random_recipe.has_picture {
         let img = db_utils::fetch_or_build_image(random_recipe.clone());
         match bot
             .send_photo(msg.chat.id, InputFile::file(img.clone()))
             .caption(format!(
-                "*{}*\n\n/accept to get the pdf\n/next for another recipe",
-                escape_markdown(random_recipe.name)
+                "*{}*{}",
+                escape_markdown(random_recipe.name),
+                text_end
             ))
             .parse_mode(ParseMode::MarkdownV2)
             .await
@@ -142,7 +144,7 @@ async fn send_random_recipe(
             Err(e) => panic!("Failed to send photo stored at {:?}, with error {}", img, e),
         };
     } else {
-        bot.send_message(msg.chat.id, random_recipe.name)
+        bot.send_message(msg.chat.id, format!("*{}*{}", random_recipe.name, text_end))
             .await
             .unwrap();
     }
