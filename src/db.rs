@@ -141,23 +141,25 @@ fn pdf_path(recipe: Recipe) -> PathBuf {
 
 pub fn fetch_or_build_pdf(recipe: Recipe) -> PathBuf {
     let path = pdf_path(recipe.clone());
-    // TODO: Handle this directly in rust with either https://github.com/pdf-rs/pdf or https://github.com/J-F-Liu/lopdf
-    let pdf_result = process::Command::new("pdftk")
-        .arg("assets/book.pdf")
-        .arg("cat")
-        .arg(format!("{}-{}", recipe.page_start, recipe.page_end))
-        .arg("output")
-        .arg(path.clone())
-        .output();
-    match pdf_result {
-        Ok(output) => {
-            if output.status.success() {
-                log::debug!("PDF extracted to {:?}", output);
-            } else {
-                panic!("Error: {}", String::from_utf8_lossy(&output.stderr));
+    if !path.is_file() {
+        // TODO: Handle this directly in rust with either https://github.com/pdf-rs/pdf or https://github.com/J-F-Liu/lopdf
+        let pdf_result = process::Command::new("pdftk")
+            .arg("assets/book.pdf")
+            .arg("cat")
+            .arg(format!("{}-{}", recipe.page_start, recipe.page_end))
+            .arg("output")
+            .arg(path.clone())
+            .output();
+        match pdf_result {
+            Ok(output) => {
+                if output.status.success() {
+                    log::debug!("PDF extracted to {:?}", output);
+                } else {
+                    panic!("Error: {}", String::from_utf8_lossy(&output.stderr));
+                }
             }
+            Err(e) => eprintln!("Failed to run pdftk: {}", e),
         }
-        Err(e) => eprintln!("Failed to run pdftk: {}", e),
     }
     path
 }
@@ -173,33 +175,49 @@ pub fn fetch_or_build_image(recipe: Recipe) -> PathBuf {
     }
 
     let base_image_name = dir_images.join(recipe.clone().name.to_string());
-    let img_result = process::Command::new("pdfimages")
-        .arg("-png")
-        .arg("-print-filenames")
-        .arg(pdf)
-        .arg(base_image_name)
-        .output();
-    let img_output = match img_result {
-        Ok(output) => {
-            if output.status.success() {
-                log::debug!("Imgs extracted to {:?}", output);
-                String::from_utf8(output.stdout)
-                    .unwrap()
-                    .trim()
-                    .split('\n')
-                    .into_iter()
-                    .last()
-                    .unwrap()
-                    .to_string()
-            } else {
-                panic!("Error: {}", String::from_utf8_lossy(&output.stderr));
+    let mut images_present = dir_images
+        .read_dir()
+        .unwrap()
+        .map(|entry| entry.expect("Failed to get entry"))
+        .filter(|entry| {
+            let file = entry.file_name();
+            file.to_str()
+                .unwrap()
+                .starts_with(recipe.clone().name.as_str())
+        })
+        .map(|entry| entry.path())
+        .collect::<Vec<PathBuf>>();
+    images_present.sort();
+    if images_present.is_empty() {
+        let img_result = process::Command::new("pdfimages")
+            .arg("-png")
+            .arg("-print-filenames")
+            .arg(pdf)
+            .arg(base_image_name)
+            .output();
+        let img_output = match img_result {
+            Ok(output) => {
+                if output.status.success() {
+                    log::debug!("Imgs extracted to {:?}", output);
+                    String::from_utf8(output.stdout)
+                        .unwrap()
+                        .trim()
+                        .split('\n')
+                        .into_iter()
+                        .last()
+                        .unwrap()
+                        .to_string()
+                } else {
+                    panic!("Error: {}", String::from_utf8_lossy(&output.stderr));
+                }
             }
-        }
-        Err(e) => panic!("Failed to run pdfimages: {}", e),
-    };
-    println!("Fetching image {}", img_output);
-    PathBuf::from(img_output)
-    // dir_images.join(format!("{}-000.png", recipe.name))
+            Err(e) => panic!("Failed to run pdfimages: {}", e),
+        };
+        println!("Fetching image {}", img_output);
+        PathBuf::from(img_output)
+    } else {
+        images_present.last().unwrap().to_path_buf()
+    }
 }
 
 pub fn fetch_random_recipe(conn: &Mutex<Connection>, prev_ids: &Vec<i32>) -> Option<Recipe> {

@@ -88,6 +88,7 @@ async fn start_recipe(
     send_random_recipe(bot, dialogue, conn, msg, State::Start).await
 }
 
+// List of characters to be escaped according to https://core.telegram.org/bots/api#markdownv2-style.
 static SPECIAL_CHARACTERS: [char; 18] = [
     '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!',
 ];
@@ -145,6 +146,7 @@ async fn send_random_recipe(
         };
     } else {
         bot.send_message(msg.chat.id, format!("*{}*{}", random_recipe.name, text_end))
+            .parse_mode(ParseMode::MarkdownV2)
             .await
             .unwrap();
     }
